@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Sushi Corp Admin Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;}
+  body{background:#111;color:white;}
+  #checking{display:flex;align-items:center;justify-content:center;height:100vh;color:#8ea3bd;font-size:14px;}
+  #app{display:none;text-align:center;padding-top:60px;padding-bottom:60px;}
+  #logout-btn{
+    margin-top:24px;padding:10px 22px;border:none;border-radius:8px;
+    background:linear-gradient(90deg,#00b7ff,#3f8cff);color:#fff;font-size:14px;
+    cursor:pointer;
+  }
+
+  .upload-card{
+    max-width:480px;margin:50px auto 0;background:#1a1a1a;border:1px solid #2b2b2b;
+    border-radius:12px;padding:30px;text-align:left;
+  }
+  .upload-card h2{text-align:center;margin-bottom:24px;font-size:20px;}
+  .upload-card label{display:block;margin-bottom:6px;font-size:13px;color:#aaa;}
+  .upload-card input[type="text"],
+  .upload-card textarea{
+    width:100%;padding:10px;margin-bottom:18px;background:#111;
+    border:1px solid #333;border-radius:8px;color:white;font-size:14px;
+  }
+  .upload-card textarea{resize:vertical;min-height:70px;}
+  .upload-card input[type="file"]{
+    width:100%;margin-bottom:18px;color:#ccc;font-size:13px;
+  }
+  #upload-btn{
+    width:100%;padding:12px;border:none;border-radius:8px;
+    background:linear-gradient(90deg,#00b7ff,#3f8cff);color:#fff;font-size:15px;
+    font-weight:600;cursor:pointer;
+  }
+  #upload-btn:disabled{opacity:.6;cursor:not-allowed;}
+  #upload-status{margin-top:14px;font-size:13px;text-align:center;min-height:18px;}
+  .status-ok{color:#5ee69b;}
+  .status-err{color:#ff8a8a;}
+
+  #games-list{max-width:480px;margin:30px auto 0;text-align:left;}
+  #games-list h3{font-size:15px;color:#aaa;margin-bottom:10px;}
+  .game-row{
+    background:#1a1a1a;border:1px solid #2b2b2b;border-radius:8px;
+    padding:10px 14px;margin-bottom:8px;font-size:13px;display:flex;
+    justify-content:space-between;align-items:center;
+  }
+  .game-row span.title{color:#fff;font-weight:600;}
+  .game-row span.meta{color:#888;font-size:12px;}
+</style>
+</head>
+<body>
+
+<div id="checking">Checking access...</div>
+
+<div id="app">
+  <h1>🎉 Login Successful!</h1>
+  <p>Welcome to Sushi Corp Admin Dashboard</p>
+  <p id="who" style="color:#8ea3bd;font-size:13px;margin-top:10px;"></p>
+  <button id="logout-btn">Sign Out</button>
+
+  <div class="upload-card">
+    <h2>Upload a New Game</h2>
+
+    <label for="game-title">Title</label>
+    <input type="text" id="game-title" placeholder="e.g. Sushi Run">
+
+    <label for="game-description">Description</label>
+    <textarea id="game-description" placeholder="Short description of the game"></textarea>
+
+    <label for="game-type">Type</label>
+    <input type="text" id="game-type" placeholder="e.g. Platformer, Puzzle, Arcade">
+
+    <label for="game-file">Game File (.zip)</label>
+    <input type="file" id="game-file" accept=".zip,.exe">
+
+    <button id="upload-btn">Upload Game</button>
+    <div id="upload-status"></div>
+  </div>
+
+  <div id="games-list">
+    <h3>Uploaded Games</h3>
+    <div id="games-rows">Loading...</div>
+  </div>
+</div>
+
+<script>
+  // ════════════════════════════════════════════════
+  //  🔧 Same Supabase project as admin.html
+  // ════════════════════════════════════════════════
+  const SUPABASE_URL = "https://hrinbkblrgphhbyetswh.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyaW5ia2JscmdwaGhieWV0c3doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3OTg1NDEsImV4cCI6MjA5ODM3NDU0MX0.weKFMYZhXVUZ2Cimf0kHfl8dbo0zPzEmNPBEVD_AZRk";
+
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const GAMES_BUCKET = "games";
+
+  (async function guard(){
+    const { data, error } = await sb.auth.getSession();
+    if (error || !data.session) {
+      // Not logged in — bounce back to the login page immediately
+      window.location.href = "admin.html";
+      return;
+    }
+    document.getElementById('checking').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('who').textContent = "Signed in as " + data.session.user.email;
+    loadGames();
+  })();
+
+  // Also react live if the session ends in another tab / expires
+  sb.auth.onAuthStateChange((event, session) => {
+    if (!session) window.location.href = "admin.html";
+  });
+
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await sb.auth.signOut();
+    window.location.href = "admin.html";
+  });
+
+  // ─── Upload handling ───────────────────────────────
+  const uploadBtn = document.getElementById('upload-btn');
+  const statusBox = document.getElementById('upload-status');
+
+  uploadBtn.addEventListener('click', async () => {
+    const title = document.getElementById('game-title').value.trim();
+    const description = document.getElementById('game-description').value.trim();
+    const type = document.getElementById('game-type').value.trim();
+    const fileInput = document.getElementById('game-file');
+    const file = fileInput.files[0];
+
+    statusBox.textContent = "";
+    statusBox.className = "";
+
+    if (!title || !file) {
+      statusBox.textContent = "Please provide at least a title and a file.";
+      statusBox.className = "status-err";
+      return;
+    }
+
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = "Uploading...";
+
+    try {
+      // Unique path so files don't overwrite each other
+      const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
+      const filePath = `${Date.now()}_${safeName}`;
+
+      // 1. Upload the actual file to Storage
+      const { error: uploadError } = await sb.storage
+        .from(GAMES_BUCKET)
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // 2. Insert a row into the games table referencing the file path
+      const { error: insertError } = await sb
+        .from('games')
+        .insert([{ title, description, type, url: filePath }]);
+
+      if (insertError) throw insertError;
+
+      statusBox.textContent = "Game uploaded successfully!";
+      statusBox.className = "status-ok";
+
+      // Reset form
+      document.getElementById('game-title').value = "";
+      document.getElementById('game-description').value = "";
+      document.getElementById('game-type').value = "";
+      fileInput.value = "";
+
+      loadGames();
+    } catch (err) {
+      statusBox.textContent = "Upload failed: " + (err.message || err);
+      statusBox.className = "status-err";
+    } finally {
+      uploadBtn.disabled = false;
+      uploadBtn.textContent = "Upload Game";
+    }
+  });
+
+  // ─── List existing games ───────────────────────────
+  async function loadGames() {
+    const rowsBox = document.getElementById('games-rows');
+    const { data, error } = await sb
+      .from('games')
+      .select('*')
+      .order('id', { ascending: false });
+
+    if (error) {
+      rowsBox.textContent = "Could not load games: " + error.message;
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      rowsBox.textContent = "No games uploaded yet.";
+      return;
+    }
+
+    rowsBox.innerHTML = data.map(g => `
+      <div class="game-row">
+        <div>
+          <div class="title">${escapeHtml(g.title || "Untitled")}</div>
+          <div class="meta">${escapeHtml(g.type || "")}</div>
+        </div>
+        <div class="meta">${escapeHtml(g.url || "")}</div>
+      </div>
+    `).join("");
+  }
+
+  function escapeHtml(str){
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+</script>
+
+</body>
+</html>

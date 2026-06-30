@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sushi Corp Admin</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:'Poppins',sans-serif;
+}
+
+body{
+
+height:100vh;
+
+display:flex;
+justify-content:center;
+align-items:center;
+
+background:
+linear-gradient(rgba(10,10,20,.88),rgba(10,10,20,.92)),
+url("https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1600&q=80");
+
+background-size:cover;
+background-position:center;
+overflow:hidden;
+}
+
+.login-box{
+
+width:430px;
+
+background:rgba(20,20,30,.78);
+
+backdrop-filter:blur(14px);
+
+border:1px solid rgba(255,255,255,.08);
+
+border-radius:18px;
+
+padding:40px;
+
+box-shadow:
+0 0 35px rgba(0,170,255,.18);
+
+animation:fade .8s ease;
+
+}
+
+@keyframes fade{
+
+from{
+
+opacity:0;
+transform:translateY(30px);
+
+}
+
+to{
+
+opacity:1;
+transform:translateY(0);
+
+}
+
+}
+
+.logo{
+
+font-size:34px;
+
+text-align:center;
+
+margin-bottom:10px;
+
+}
+
+h1{
+
+text-align:center;
+
+color:white;
+
+font-size:28px;
+
+margin-bottom:8px;
+
+}
+
+.subtitle{
+
+text-align:center;
+
+color:#8ea3bd;
+
+margin-bottom:35px;
+
+font-size:14px;
+
+}
+
+label{
+
+display:block;
+
+color:#d9d9d9;
+
+margin-bottom:8px;
+
+font-size:14px;
+
+}
+
+input{
+
+width:100%;
+
+padding:15px;
+
+margin-bottom:22px;
+
+background:#171b24;
+
+border:1px solid #2b3647;
+
+border-radius:10px;
+
+color:white;
+
+font-size:15px;
+
+transition:.25s;
+
+}
+
+input:focus{
+
+outline:none;
+
+border-color:#00b7ff;
+
+box-shadow:0 0 15px rgba(0,183,255,.35);
+
+}
+
+button{
+
+width:100%;
+
+padding:15px;
+
+background:linear-gradient(90deg,#00b7ff,#3f8cff);
+
+border:none;
+
+border-radius:10px;
+
+color:white;
+
+font-size:16px;
+
+font-weight:600;
+
+cursor:pointer;
+
+transition:.3s;
+
+}
+
+button:hover{
+
+transform:translateY(-2px);
+
+box-shadow:0 0 20px rgba(0,183,255,.45);
+
+}
+
+.footer{
+
+margin-top:28px;
+
+text-align:center;
+
+font-size:13px;
+
+color:#7d8ca0;
+
+}
+
+#error{
+
+display:none;
+
+margin-bottom:20px;
+
+background:#ff444422;
+
+padding:12px;
+
+border-radius:8px;
+
+border:1px solid #ff5555;
+
+color:#ffbcbc;
+
+font-size:14px;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="login-box">
+
+<div class="logo">🛡️</div>
+
+<h1>Sushi Corp Admin</h1>
+
+<div class="subtitle">
+Secure Control Panel
+</div>
+
+<div id="error"></div>
+
+<label>Email</label>
+
+<input
+id="email"
+type="email"
+placeholder="Enter admin email">
+
+<label>Password</label>
+
+<input
+id="password"
+type="password"
+placeholder="Enter password">
+
+<button id="loginBtn">
+Sign In
+</button>
+
+<div class="footer">
+
+Authorized Personnel Only
+
+</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="admin.js"></script>
+</body>
+
+</html>

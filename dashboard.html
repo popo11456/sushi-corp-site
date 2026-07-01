@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sushi Corp Admin Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
+:root{--bg:#0d0d14;--card:rgba(255,255,255,0.04);--border:rgba(255,255,255,0.08);--cyan:#00b7ff;--purple:#8a50ff;--text:#e8e0ff;--muted:#6b7a99;}
+body{background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* GUARD */
+#guard{display:flex;align-items:center;justify-content:center;height:100vh;color:var(--muted);font-size:14px;}
+
+/* LAYOUT */
+#app{display:none;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:1rem 2rem;background:rgba(0,0,0,0.4);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+.topbar-logo{font-size:1.1rem;font-weight:700;color:#fff;}
+.topbar-logo span{color:var(--cyan);}
+.topbar-right{display:flex;align-items:center;gap:1rem;}
+.who{font-size:.75rem;color:var(--muted);}
+.logout-btn{padding:.38rem .9rem;border-radius:7px;border:1px solid rgba(255,80,80,0.3);background:transparent;color:#ff6060;font-size:.78rem;cursor:pointer;transition:all .2s;}
+.logout-btn:hover{background:rgba(255,80,80,0.1);}
+
+.container{max-width:900px;margin:0 auto;padding:2.5rem 1.5rem;display:flex;flex-direction:column;gap:2rem;}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.8rem;}
+.card h2{font-size:1rem;font-weight:700;margin-bottom:1.4rem;display:flex;align-items:center;gap:.5rem;}
+
+/* FORM */
+.form-group{margin-bottom:1rem;}
+.form-group label{display:block;font-size:.72rem;color:var(--muted);margin-bottom:.4rem;letter-spacing:.07em;text-transform:uppercase;}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:.65rem .9rem;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:.88rem;font-family:inherit;outline:none;transition:border-color .2s;}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:var(--cyan);}
+.form-group textarea{resize:vertical;min-height:70px;}
+.form-group select option{background:#1a1a2e;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+
+.upload-btn{width:100%;padding:.7rem;border-radius:9px;font-size:.9rem;font-weight:600;background:linear-gradient(90deg,var(--purple),var(--cyan));color:#000;border:none;cursor:pointer;transition:all .2s;margin-top:.5rem;}
+.upload-btn:hover{opacity:.88;transform:translateY(-1px);}
+.upload-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+
+/* PROGRESS */
+.progress-wrap{display:none;margin-top:1rem;}
+.progress-track{height:6px;background:rgba(255,255,255,0.08);border-radius:99px;overflow:hidden;}
+.progress-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--purple),var(--cyan));transition:width .25s;}
+.progress-text{font-size:.72rem;color:var(--muted);margin-top:.5rem;}
+
+/* ERROR / SUCCESS */
+.msg{display:none;padding:.75rem 1rem;border-radius:8px;font-size:.82rem;margin-top:.8rem;}
+.msg.error{background:rgba(255,60,60,0.1);border:1px solid rgba(255,60,60,0.25);color:#ff8080;}
+.msg.success{background:rgba(0,245,100,0.08);border:1px solid rgba(0,245,100,0.2);color:#60ff90;}
+
+/* GAMES LIST */
+.games-list{display:flex;flex-direction:column;gap:.7rem;}
+.game-row{display:flex;align-items:center;gap:1rem;padding:.9rem 1rem;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;}
+.game-row-emoji{font-size:1.6rem;width:36px;text-align:center;}
+.game-row-info{flex:1;}
+.game-row-title{font-size:.88rem;font-weight:600;}
+.game-row-meta{font-size:.7rem;color:var(--muted);margin-top:.15rem;}
+.game-row-xp{font-size:.75rem;color:var(--cyan);white-space:nowrap;}
+.del-btn{padding:.3rem .7rem;border-radius:6px;font-size:.72rem;background:rgba(255,60,60,0.08);border:1px solid rgba(255,60,60,0.2);color:#ff6060;cursor:pointer;transition:all .2s;}
+.del-btn:hover{background:rgba(255,60,60,0.18);}
+.empty{color:var(--muted);font-size:.85rem;padding:1rem 0;}
+
+/* FEEDBACK LIST */
+.fb-row{padding:.9rem 0;border-bottom:1px solid var(--border);font-size:.82rem;}
+.fb-row:last-child{border-bottom:none;}
+.fb-row-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem;}
+.fb-name{font-weight:600;color:var(--cyan);}
+.fb-stars{color:#ffd700;font-size:.78rem;}
+.fb-game-tag{font-size:.68rem;color:var(--muted);}
+.fb-msg{color:rgba(232,224,255,0.7);line-height:1.6;}
+</style>
+</head>
+<body>
+
+<div id="guard">Checking access...</div>
+
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo">Su-Shi <span>Corp</span> Admin</div>
+    <div class="topbar-right">
+      <span class="who" id="who-txt"></span>
+      <button class="logout-btn" onclick="signOut()">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- UPLOAD GAME -->
+    <div class="card">
+      <h2>📦 Upload New Game</h2>
+      <p style="font-size:.78rem;color:var(--muted);margin-bottom:1.2rem;line-height:1.65;">
+        Upload a zipped HTML5 game. The zip must contain <code>index.html</code> at its root.
+        All JS/CSS/image files inside the zip will be uploaded automatically to Supabase Storage.
+      </p>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Game Title</label>
+          <input type="text" id="g-title" placeholder="e.g. Sushi Solitaire"/>
+        </div>
+        <div class="form-group">
+          <label>Emoji Icon</label>
+          <input type="text" id="g-emoji" placeholder="🎮" maxlength="2"/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="g-desc" placeholder="Short description of the game..."></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Category / Type</label>
+          <select id="g-type">
+            <option value="puzzle">Puzzle</option>
+            <option value="action">Action</option>
+            <option value="arcade">Arcade</option>
+            <option value="strategy">Strategy</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>XP per Play</label>
+          <input type="number" id="g-xp" placeholder="50" min="1" max="9999" value="50"/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Game File (.zip)</label>
+        <input type="file" id="g-file" accept=".zip"/>
+      </div>
+
+      <div class="progress-wrap" id="prog-wrap">
+        <div class="progress-track"><div class="progress-fill" id="prog-fill"></div></div>
+        <div class="progress-text" id="prog-text">Preparing...</div>
+      </div>
+
+      <div class="msg" id="upload-msg"></div>
+
+      <button class="upload-btn" id="upload-btn" onclick="uploadGame()">Upload & Publish Game</button>
+    </div>
+
+    <!-- MANAGE GAMES -->
+    <div class="card">
+      <h2>🎮 Published Games</h2>
+      <div class="games-list" id="games-list">
+        <div class="empty">Loading games...</div>
+      </div>
+    </div>
+
+    <!-- FEEDBACK -->
+    <div class="card">
+      <h2>💬 Player Feedback</h2>
+      <div id="fb-list">
+        <div class="empty">Loading feedback...</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL     = "https://hrinbkblrgphhbyetswh.supabase.co";
+const SUPABASE_ANON_KEY= "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyaW5ia2JscmdwaGhieWV0c3doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3OTg1NDEsImV4cCI6MjA5ODM3NDU0MX0.weKFMYZhXVUZ2Cimf0kHfl8dbo0zPzEmNPBEVD_AZRk";
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ─── SESSION GUARD ────────────────────────────────
+let session = null;
+(async function guard(){
+  const { data } = await sb.auth.getSession();
+  if (!data.session) { window.location.href = "admin.html"; return; }
+  session = data.session;
+  document.getElementById('guard').style.display = 'none';
+  document.getElementById('app').style.display   = 'block';
+  document.getElementById('who-txt').textContent  = session.user.email;
+  loadGames();
+  loadFeedback();
+})();
+
+sb.auth.onAuthStateChange((e, s) => { if (!s) window.location.href = "admin.html"; });
+
+async function signOut(){
+  await sb.auth.signOut();
+  window.location.href = "admin.html";
+}
+
+// ─── HELPERS ──────────────────────────────────────
+function showMsg(id, text, type){
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className   = 'msg ' + type;
+  el.style.display = 'block';
+  if (type === 'success') setTimeout(()=>el.style.display='none', 4000);
+}
+
+function slugify(s){
+  return (s||'game').toLowerCase().trim()
+    .replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'').slice(0,40)||'game';
+}
+
+function guessMime(path){
+  const ext = path.split('.').pop().toLowerCase();
+  return ({
+    html:'text/html', htm:'text/html', js:'application/javascript',
+    css:'text/css', json:'application/json', png:'image/png',
+    jpg:'image/jpeg', jpeg:'image/jpeg', gif:'image/gif',
+    svg:'image/svg+xml', webp:'image/webp', mp3:'audio/mpeg',
+    wav:'audio/wav', ogg:'audio/ogg', mp4:'video/mp4',
+    wasm:'application/wasm', woff:'font/woff', woff2:'font/woff2',
+    ttf:'font/ttf'
+  })[ext] || 'application/octet-stream';
+}
+
+// ─── UPLOAD GAME ──────────────────────────────────
+async function uploadGame(){
+  const title   = document.getElementById('g-title').value.trim();
+  const emoji   = document.getElementById('g-emoji').value.trim() || '🎮';
+  const desc    = document.getElementById('g-desc').value.trim();
+  const type    = document.getElementById('g-type').value;
+  const xp      = parseInt(document.getElementById('g-xp').value) || 50;
+  const fileInp = document.getElementById('g-file');
+  const file    = fileInp.files[0];
+
+  if (!title)  { showMsg('upload-msg','Game title is required','error'); return; }
+  if (!file)   { showMsg('upload-msg','Choose a .zip file first','error'); return; }
+  if (typeof JSZip === 'undefined') { showMsg('upload-msg','JSZip failed to load — refresh and try again','error'); return; }
+
+  const btn      = document.getElementById('upload-btn');
+  const progWrap = document.getElementById('prog-wrap');
+  const progFill = document.getElementById('prog-fill');
+  const progText = document.getElementById('prog-text');
+  btn.disabled   = true;
+  progWrap.style.display = 'block';
+  progFill.style.width   = '0%';
+  progText.textContent   = 'Reading zip...';
+  document.getElementById('upload-msg').style.display = 'none';
+
+  try {
+    const zip     = await JSZip.loadAsync(file);
+    const entries = Object.keys(zip.files).filter(k => !zip.files[k].dir);
+
+    // Find index.html — at root or one folder deep
+    let prefix = '';
+    let indexPath = entries.find(p => p.toLowerCase() === 'index.html');
+    if (!indexPath) {
+      const nested = entries.find(p => p.toLowerCase().endsWith('/index.html') && p.split('/').length === 2);
+      if (nested) { indexPath = nested; prefix = nested.split('/')[0] + '/'; }
+    }
+    if (!indexPath) {
+      showMsg('upload-msg','No index.html found at the root of the zip. Please check your zip structure.','error');
+      btn.disabled = false; progWrap.style.display = 'none'; return;
+    }
+
+    const folderSlug = slugify(title) + '-' + Date.now().toString(36);
+    const total = entries.length;
+    let done = 0;
+
+    for (const path of entries) {
+      const relPath = prefix && path.startsWith(prefix) ? path.slice(prefix.length) : path;
+      if (!relPath) { done++; continue; }
+
+      const blob        = await zip.files[path].async('blob');
+      const storagePath = `${folderSlug}/${relPath}`;
+
+      const { error: upErr } = await sb.storage.from('games').upload(storagePath, blob, {
+        upsert: true,
+        contentType: guessMime(relPath)
+      });
+      if (upErr) throw new Error('Storage upload failed: ' + upErr.message);
+
+      done++;
+      progFill.style.width  = Math.round((done / total) * 90) + '%';
+      progText.textContent  = `Uploading ${relPath} (${done}/${total})...`;
+    }
+
+    // Get public URL for index.html
+    const { data: pub } = sb.storage.from('games').getPublicUrl(`${folderSlug}/index.html`);
+
+    progText.textContent = 'Saving game to database...';
+    progFill.style.width = '95%';
+
+    const { error: dbErr } = await sb.from('games').insert({
+      title, description: desc, type: 'external',
+      url: pub.publicUrl, xp, emoji, plays: 0
+    });
+    if (dbErr) throw new Error('Database save failed: ' + dbErr.message);
+
+    progFill.style.width = '100%';
+    progText.textContent = 'Done!';
+    setTimeout(() => { progWrap.style.display = 'none'; }, 1500);
+
+    showMsg('upload-msg', `✅ "${title}" is now live on your site!`, 'success');
+
+    // Reset form
+    ['g-title','g-emoji','g-desc','g-xp'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('g-emoji').value = '';
+    fileInp.value = '';
+
+    loadGames();
+
+  } catch(e) {
+    console.error(e);
+    showMsg('upload-msg', 'Upload failed: ' + e.message, 'error');
+    progWrap.style.display = 'none';
+  }
+
+  btn.disabled = false;
+}
+
+// ─── LOAD GAMES ───────────────────────────────────
+async function loadGames(){
+  const el = document.getElementById('games-list');
+  const { data, error } = await sb.from('games').select('*').order('created_at', { ascending: false });
+  if (error || !data?.length) {
+    el.innerHTML = '<div class="empty">No games uploaded yet.</div>';
+    return;
+  }
+  el.innerHTML = data.map(g => `
+    <div class="game-row">
+      <div class="game-row-emoji">${g.emoji || '🎮'}</div>
+      <div class="game-row-info">
+        <div class="game-row-title">${g.title}</div>
+        <div class="game-row-meta">${g.description || ''} · ${g.type || 'game'}</div>
+      </div>
+      <div class="game-row-xp">⚡ ${g.xp} XP</div>
+      <button class="del-btn" onclick="deleteGame('${g.id}', '${(g.url||'').replace(/'/g,"\\'")}')">Delete</button>
+    </div>`).join('');
+}
+
+async function deleteGame(id, url){
+  if (!confirm('Delete this game? This cannot be undone.')) return;
+  // Delete from DB
+  const { error } = await sb.from('games').delete().eq('id', id);
+  if (error) { alert('Error: ' + error.message); return; }
+  // Also remove files from storage if it's a hosted game
+  if (url && url.includes('/storage/')) {
+    const path = url.split('/games/')[1];
+    if (path) {
+      const folder = path.split('/')[0];
+      // List and delete all files in that folder
+      const { data: files } = await sb.storage.from('games').list(folder);
+      if (files?.length) {
+        const paths = files.map(f => `${folder}/${f.name}`);
+        await sb.storage.from('games').remove(paths);
+      }
+    }
+  }
+  loadGames();
+}
+
+// ─── LOAD FEEDBACK ────────────────────────────────
+async function loadFeedback(){
+  const el = document.getElementById('fb-list');
+  const { data, error } = await sb.from('feedback').select('*').order('created_at', { ascending: false });
+  if (error || !data?.length) {
+    el.innerHTML = '<div class="empty">No feedback yet.</div>';
+    return;
+  }
+  el.innerHTML = data.map(f => `
+    <div class="fb-row">
+      <div class="fb-row-head">
+        <span class="fb-name">${f.name || 'Anonymous'}</span>
+        <span>
+          <span class="fb-stars">${'★'.repeat(f.rating||5)}</span>
+          <button class="del-btn" style="margin-left:.5rem" onclick="deleteFeedback('${f.id}')">Delete</button>
+        </span>
+      </div>
+      ${f.game ? `<div class="fb-game-tag">🎮 ${f.game}</div>` : ''}
+      <div class="fb-msg">${f.msg}</div>
+    </div>`).join('');
+}
+
+async function deleteFeedback(id){
+  if (!confirm('Delete this review?')) return;
+  await sb.from('feedback').delete().eq('id', id);
+  loadFeedback();
+}
+</script>
+</body>
+</html>

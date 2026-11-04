@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>3 hour countdown</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07040f; --cyan:#27f3ff; --pink:#ff2bd6; --violet:#7b2cff; --dim:#8a7fb0;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:
+    radial-gradient(60vmax 40vmax at 15% 10%, rgba(123,44,255,.35), transparent 60%),
+    radial-gradient(50vmax 40vmax at 90% 95%, rgba(255,43,214,.28), transparent 60%),
+    var(--bg);
+  color:var(--cyan);
+  font-family:Orbitron,"Segoe UI",system-ui,sans-serif;
+  display:flex;align-items:center;justify-content:center;
+  padding:calc(1.5rem + env(safe-area-inset-top,0px)) 1.5rem calc(1.5rem + env(safe-area-inset-bottom,0px));
+  overflow:hidden;position:relative;
+}
+/* neon perspective grid floor */
+body::before{
+  content:"";position:fixed;left:-50%;right:-50%;bottom:0;height:45vh;
+  background:
+    linear-gradient(var(--pink) 1px, transparent 1px) 0 0/100% 48px,
+    linear-gradient(90deg, var(--pink) 1px, transparent 1px) 0 0/64px 100%;
+  opacity:.28;transform:perspective(420px) rotateX(62deg);transform-origin:bottom;
+  -webkit-mask-image:linear-gradient(to top,#000 10%,transparent 90%);
+          mask-image:linear-gradient(to top,#000 10%,transparent 90%);
+  pointer-events:none;
+}
+main{position:relative;text-align:center;width:100%;max-width:760px}
+.time{
+  margin:0;font-weight:700;font-size:clamp(2.6rem,13vw,7rem);line-height:1;
+  font-variant-numeric:tabular-nums;letter-spacing:.02em;white-space:nowrap;
+  color:#eaffff;
+  text-shadow:0 0 6px var(--cyan),0 0 18px var(--cyan),0 0 42px var(--cyan),0 0 90px var(--violet);
+}
+.units{
+  display:flex;justify-content:center;gap:clamp(1.4rem,9vw,4.2rem);
+  margin-top:1rem;color:var(--pink);font-size:clamp(.7rem,2.4vw,.95rem);font-weight:500;
+  text-shadow:0 0 8px var(--pink),0 0 20px var(--pink);
+}
+.bar{
+  height:6px;margin:2.4rem auto 0;max-width:520px;border-radius:99px;
+  background:rgba(255,255,255,.08);overflow:hidden;
+  box-shadow:0 0 0 1px rgba(39,243,255,.25);
+}
+.bar i{
+  display:block;height:100%;width:0;border-radius:99px;
+  background:linear-gradient(90deg,var(--cyan),var(--pink));
+  box-shadow:0 0 14px var(--cyan),0 0 28px var(--pink);
+  transition:width .4s linear;
+}
+.back{
+  margin:2rem 0 0;font-weight:700;font-size:clamp(1.1rem,4.6vw,2rem);letter-spacing:.04em;color:#fff0fb;
+  text-shadow:0 0 6px var(--pink),0 0 18px var(--pink),0 0 40px var(--pink);
+}
+.done .time{color:#fff0fb;text-shadow:0 0 6px var(--pink),0 0 18px var(--pink),0 0 42px var(--pink),0 0 90px var(--pink);animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.55}}
+@media (prefers-reduced-motion: reduce){ .done .time{animation:none} .bar i{transition:none} }
+</style>
+</head>
+<body>
+<main id="app">
+  <h1 class="time" id="time">03:00:00</h1>
+  <div class="units"><span>hours</span><span>minutes</span><span>seconds</span></div>
+  <div class="bar"><i id="fill"></i></div>
+  <p class="back">We’ll be back soon!!!</p>
+</main>
+<script>
+(function(){
+  var DURATION = 3*60*60*1000, KEY = 'countdown-3h-target';
+  var timeEl = document.getElementById('time'), fillEl = document.getElementById('fill'),
+      app = document.getElementById('app');
+  var target = null;
+
+  try { var saved = parseInt(localStorage.getItem(KEY), 10); if (saved) target = saved; } catch(e){}
+  if (!target) {
+    target = Date.now() + DURATION;
+    try { localStorage.setItem(KEY, String(target)); } catch(e){}
+  }
+
+  function pad(n){ return (n < 10 ? '0' : '') + n; }
+  function show(){
+    var left = Math.max(0, target - Date.now());
+    var s = Math.ceil(left/1000), h = Math.floor(s/3600), m = Math.floor(s%3600/60), sec = s%60;
+    timeEl.textContent = pad(h)+':'+pad(m)+':'+pad(sec);
+    fillEl.style.width = (100 - left/DURATION*100) + '%';
+    document.title = left > 0 ? timeEl.textContent + ' · We’ll be back soon!' : 'We’re back!';
+    if (left === 0) app.classList.add('done');
+  }
+  show();
+  setInterval(show, 250);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>We’ll be back soon!</title>
+<link href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#030a05; --green:#39ff14; --deep:#0a5c1c;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:
+    radial-gradient(60vmax 40vmax at 15% 10%, rgba(57,255,20,.10), transparent 60%),
+    radial-gradient(50vmax 40vmax at 90% 95%, rgba(57,255,20,.08), transparent 60%),
+    var(--bg);
+  color:var(--green);
+  font-family:Audiowide,"Segoe UI",system-ui,sans-serif;
+  display:flex;align-items:center;justify-content:center;
+  padding:calc(1.5rem + env(safe-area-inset-top,0px)) 1.5rem calc(1.5rem + env(safe-area-inset-bottom,0px));
+  overflow:hidden;position:relative;
+}
+/* neon perspective grid floor */
+body::before{
+  content:"";position:fixed;left:-50%;right:-50%;bottom:0;height:45vh;
+  background:
+    linear-gradient(var(--green) 1px, transparent 1px) 0 0/100% 48px,
+    linear-gradient(90deg, var(--green) 1px, transparent 1px) 0 0/64px 100%;
+  opacity:.18;transform:perspective(420px) rotateX(62deg);transform-origin:bottom;
+  -webkit-mask-image:linear-gradient(to top,#000 10%,transparent 90%);
+          mask-image:linear-gradient(to top,#000 10%,transparent 90%);
+  pointer-events:none;
+}
+main{position:relative;text-align:center;width:100%;max-width:900px}
+.back{
+  margin:0;font-weight:400;font-size:clamp(2.4rem,11vw,6rem);line-height:1.15;letter-spacing:.03em;color:var(--green);
+  text-shadow:0 0 8px rgba(57,255,20,.55),0 0 24px rgba(57,255,20,.35);
+}
+.w{display:inline-block;white-space:nowrap;margin:0 .14em}
+.l{display:inline-block;will-change:transform,opacity}
+@keyframes flicker{0%,18%,22%,25%,53%,57%,100%{opacity:1}20%,24%,55%{opacity:.6}}
+</style>
+</head>
+<body>
+<main>
+  <h1 class="back" id="msg"></h1>
+</main>
+<script>
+(function(){
+  var msg = document.getElementById('msg');
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var BACK = 'We’ll be back soon!!!';
+  function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+  function rand(a,b){ return a + Math.random()*(b-a); }
+
+  function build(text){
+    msg.innerHTML = '';
+    msg.setAttribute('aria-label', text);
+    var letters = [];
+    text.split(' ').forEach(function(word){
+      var w = document.createElement('span'); w.className = 'w'; w.setAttribute('aria-hidden','true');
+      word.split('').forEach(function(ch){
+        var l = document.createElement('span'); l.className = 'l'; l.textContent = ch;
+        w.appendChild(l); letters.push(l);
+      });
+      msg.appendChild(w);
+    });
+    return letters;
+  }
+
+  async function showIn(text){
+    var ls = build(text);
+    if (reduce) return;
+    ls.forEach(function(l,i){
+      l.animate([
+        {opacity:0, transform:'translateY(-30px) scale(.7)'},
+        {opacity:1, transform:'none'}
+      ], {duration:420, delay:i*45, easing:'cubic-bezier(.2,.8,.3,1.2)', fill:'backwards'});
+    });
+    await sleep(420 + ls.length*45);
+  }
+
+  async function tumble(){
+    var ls = [].slice.call(msg.querySelectorAll('.l'));
+    if (reduce){ msg.style.opacity = 0; await sleep(500); msg.style.opacity = ''; return; }
+    var drop = window.innerHeight * 1.2, longest = 0;
+    ls.forEach(function(l){
+      var delay = rand(0, 700), dur = rand(900, 1500);
+      longest = Math.max(longest, delay + dur);
+      l.animate([
+        {transform:'translate(0,0) rotate(0deg)', opacity:1, offset:0},
+        {transform:'translate('+rand(-10,10)+'px,'+(-rand(8,26))+'px) rotate('+rand(-25,25)+'deg)', opacity:1, offset:.12},
+        {transform:'translate('+rand(-160,160)+'px,'+drop+'px) rotate('+rand(-540,540)+'deg)', opacity:1, offset:1}
+      ], {duration:dur, delay:delay, easing:'cubic-bezier(.5,0,.9,.6)', fill:'forwards'});
+    });
+    await sleep(longest + 150);
+  }
+
+  (async function run(){
+    while (true) {
+      await showIn(BACK);          await sleep(1800); await tumble();
+      await showIn('Su-Shi Corp'); await sleep(1800); await tumble();
+    }
+  })();
+})();
+</script>
+</body>
+</html>
